@@ -1,0 +1,15 @@
+Package: TSVineCopula
+Type: Package
+Title: Time Series for Vine Copulas 
+Version: 0.1.0
+Author: Chun Fang (Frances) Cheng
+Maintainer: The package maintainer <frances.cheng@stat.ubc.ca>
+Description: More about what it does (maybe more than one line)
+    Use four spaces when indenting paragraphs within the Description.
+License: What license is it under?
+Encoding: UTF-8
+LazyData: true
+Imports: 
+    combinat,
+    fastmatrix,
+    VineCopula
