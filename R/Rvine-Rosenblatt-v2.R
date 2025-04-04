@@ -4,16 +4,14 @@
 
 # Scalar versions and then vectorized versions
 
-library(fastmatrix)
-
-#' @description
+#' Convert a vine array to a maximum matrix
+#'
 #' Function to convert a vine array A to a maximum matrix. Algorithm 5 in Joe (2014).
-#' 
+#'
 #' @param A a dxd vine array of R-vine in standard order with 1:d on diagonal, d>=2
 #' @param iprint print flag for intermediate calculations
 #' @param str string to describe vine for printing if iprint=T
-#'
-#' @return Returns a list with two components 
+#' @returns Returns a list with two components
 #' \enumerate{
 #' \item \code{M} - dxd array with m_{kj}= max a_{k1},..,a_{kj}
 #' \item \code{icomp} - dxd indicator array on whether back step [k,j] is needed ; icomp[k-1,m_{kj}=1 if a_{kj}<m_{kj} for k>=2
@@ -24,39 +22,38 @@ varray2M = function(A, iprint=FALSE, str="")
   d1 = d-1
   M = A
   icomp = matrix(0,d,d)
-  
+
   # Note: if d == 2, only 1 possible A: [1 1; 0 2]
   # in this case, M = A, and icomp = matrix(0,d,d)
-  
+
   if(d >= 3){
-    
+
     # modify M
-    for(k in 2:d1){ 
+    for(k in 2:d1){
       for(j in (k+1):d) M[k,j] = max(M[k-1,j],A[k,j])
     }
-    
+
     if(iprint) { cat("\n",str,"\n"); print(A); print(M) }
-    
+
     # modify icomp
-    for(k in 2:d1){ 
-      for(j in (k+1):d){ 
+    for(k in 2:d1){
+      for(j in (k+1):d){
         if(A[k,j]<M[k,j]) icomp[k-1,M[k,j]] = 1
       }
     }
   }
- 
+
   if(iprint) print(icomp)
   list(mxarray=M, icomp=icomp)
-}  
+}
 
 
-#' @description
+#' Rotate a matrix by 180 degree
+#'
 #' Function to rotate a matrix by 180 degree
-#' 
+#'
 #' @param mat a matrix to be rotated
-#'
-#' @return Returns the rotated matrix
-#'
+#' @returns Returns the rotated matrix
 rotate_180 <- function(mat){
   mat[nrow(mat):1, ncol(mat):1]
 }
@@ -66,49 +63,54 @@ rotate_180 <- function(mat){
 
 #======================================================================
 
-#' @description 
+#' Rosenblatt transform (forward)
+#'
 #' Rosenblatt transform (forward) for R-vine based on diagonal order in vine array
-#'  This is R-vine simulation if p is a vector of independent U(0,1) 
+#'  This is R-vine simulation if p is a vector of independent U(0,1)
 #'  Algorithms 17 and 18 in Joe (2014).
 #'  This function could be vectorized for simulations (random sample size n).
+#'
 #' @param p vector of length d with values in interval (0,1)
 #' @param A dxd vine array with 1:d on diagonal, d>=2
 #'     if truncated vine, only rows 1 to ntrunc are used.
 #' @param fam dxd code matrix (VineCopula copula family index) .
-#' @param param1 dxd parameter matrix (VineCopula first copula parameter) 
+#' @param param1 dxd parameter matrix (VineCopula first copula parameter)
 #'     param1[l,j] for tree l, variable j.
-#' @param param2 dxd parameter matrix (VineCopula second copula parameter) 
+#' @param param2 dxd parameter matrix (VineCopula second copula parameter)
 #'     param2[l,j] for tree l, variable j; 0 if not needed.
 #' @param ntrunc truncation level, integer between 1 and d-1 (d-1 for no truncation)
 #' @param varname character vector of variable names, optional
 #' @param iprint print flag for intermediate calculations
-#' @return d-vector of values in (0,1)
+#' @returns d-vector of values in (0,1)
 #'   If p is vector of independent U(0,1), then output is a random vector from the vine copula
 #'     based on A, fam, param1, param2, ntrunc
 #' that is, u1=p1, C_{2|1}^{-1}(p2|u1), C_{3|12}^{-1}(p3|u1,u2), ...  C_{d|1..d-1}^{-1}(p_d|u[1:(d-1)])
-#' @example
-#' to add
+#'
+#' @examples
+#' # example code
+#'
 #' @details
 #' BiCopHinv1 is from VineCopula for inverse of conditional cdf C_{2|1}^{-1}(v|u)
 #' BiCopHfunc2 is from VineCopula for conditional cdf C_{1|2}(u|v)
 #'
+#' @export
 rvineqcond = function(p, A,fam,param1,param2,ntrunc=0,
    varname=numeric(0),iprint=FALSE)
-{ 
+{
   # if lower triangular matrix, convert to upper tri matrix
-  if(is.lower.tri(A)){
+  if(fastmatrix::is.lower.tri(A)){
     A = rotate_180(A)
   }
-  if(is.lower.tri(fam)){
+  if(fastmatrix::is.lower.tri(fam)){
     fam = rotate_180(fam)
   }
-  if(is.lower.tri(param1)){
+  if(fastmatrix::is.lower.tri(param1)){
     param1 = rotate_180(param1)
   }
-  if(is.lower.tri(param2)){
+  if(fastmatrix::is.lower.tri(param2)){
     param2 = rotate_180(param2)
   }
-  
+
   d = ncol(A)
   ntrunc = floor(ntrunc)
   if(ntrunc<1 | ntrunc>=d) ntrunc = d-1
@@ -124,11 +126,11 @@ rvineqcond = function(p, A,fam,param1,param2,ntrunc=0,
   qq = matrix(0,d,d); v = matrix(0,d,d)
   u = rep(0,d)
   u[1] = p[1]; qq[1,1] = p[1]; qq[2,2] = p[2];
-  u[2] = BiCopHinv1(p[1],p[2],fam[1,2],param1[1,2],param2[1,2]); 
+  u[2] = VineCopula::BiCopHinv1(p[1],p[2],fam[1,2],param1[1,2],param2[1,2]);
   qq[1,2] = u[2]
-  if(icomp[1,2]==1) 
-  { v[1,2] = BiCopHfunc2(u[1],u[2],fam[1,2],param1[1,2],param2[1,2]) }
-  
+  if(icomp[1,2]==1)
+  { v[1,2] = VineCopula::BiCopHfunc2(u[1],u[2],fam[1,2],param1[1,2],param2[1,2]) }
+
   # the main loop
   if(d >= 3){
     for(j in 3:d){  # variable index
@@ -137,25 +139,25 @@ rvineqcond = function(p, A,fam,param1,param2,ntrunc=0,
       if(tt>1){
         for(ell in seq(tt,2)){ # tree index
           s = ifelse(A[ell,j]==M[ell,j], qq[ell,A[ell,j]], v[ell-1,M[ell,j]] )
-          qq[ell,j] = BiCopHinv1(s,qq[ell+1,j], fam[ell,j], param1[ell,j], param2[ell,j]); 
+          qq[ell,j] = VineCopula::BiCopHinv1(s,qq[ell+1,j], fam[ell,j], param1[ell,j], param2[ell,j]);
         }
       }
-      qq[1,j] = BiCopHinv1(u[A[1,j]],qq[2,j], fam[1,j], param1[1,j], param2[1,j])
-      u[j] = qq[1,j] 
-    
+      qq[1,j] = VineCopula::BiCopHinv1(u[A[1,j]],qq[2,j], fam[1,j], param1[1,j], param2[1,j])
+      u[j] = qq[1,j]
+
       # set up for next iteration (not needed for last j=d)
-      v[1,j] = BiCopHfunc2(u[A[1,j]],u[j], fam[1,j],param1[1,j], param2[1,j])
-      if(tt>1){ 
-        for(ell in 2:tt){ 
+      v[1,j] = VineCopula::BiCopHfunc2(u[A[1,j]],u[j], fam[1,j],param1[1,j], param2[1,j])
+      if(tt>1){
+        for(ell in 2:tt){
           s = ifelse(A[ell,j]==M[ell,j], qq[ell,A[ell,j]], v[ell-1,M[ell,j]] )
-          if(icomp[ell,j]==1){ 
-            v[ell,j] = BiCopHfunc2(s, qq[ell,j], fam[ell,j], param1[ell,j], param2[ell,j]); 
+          if(icomp[ell,j]==1){
+            v[ell,j] = VineCopula::BiCopHfunc2(s, qq[ell,j], fam[ell,j], param1[ell,j], param2[ell,j]);
           }
         }
       }
     }
   }
-  
+
   if(iprint) { print(qq); print(v) }
   uvec = u[order(dict$Col1[2:(d+1)])]
   names(uvec) = varname
@@ -164,49 +166,51 @@ rvineqcond = function(p, A,fam,param1,param2,ntrunc=0,
 
 #------------------------------------------------------------
 
-# Rosenblatt inverse
-
-#' @description 
+#' Rosenblatt transform (inverse)
+#'
 #' Rosenblatt transform (inverse) for R-vine based on diagonal order in vine array
 #'  If uvec is generated from the vine copula based on A,fam,param1,param1,ntrunc
-#'    then this function recovers the vector of U(0,1) used for generation.
+#'  then this function recovers the vector of U(0,1) used for generation.
 #'  The steps are embeded in Algorithm 4 in Joe (2014).
+#'
 #' @param uvec vector of length d with values in interval (0,1)
 #' @param A dxd vine array with 1:d on diagonal, d>=2
 #'     if truncated vine, only rows 1 to ntrunc are used.
 #' @param fam dxd code matrix (VineCopula copula family index) .
-#' @param param1 dxd parameter matrix (VineCopula first copula parameter) 
+#' @param param1 dxd parameter matrix (VineCopula first copula parameter)
 #'     param1[l,j] for tree l, variable j.
-#' @param param2 dxd parameter matrix (VineCopula second copula parameter) 
+#' @param param2 dxd parameter matrix (VineCopula second copula parameter)
 #'     param2[l,j] for tree l, variable j; 0 if not needed.
 #' @param ntrunc truncation level, integer between 1 and d-1 (d-1 for no truncation)
 #' @param varname character vector of variable names, optional
 #' @param iprint print flag for intermediate calculations
-#' @return d-vector of values in (0,1)
+#' @returns d-vector of values in (0,1)
 #' p1=u1, p2=C_{2|1}(u2|u1), p3=C_{3|12}(u3|u1,u2), ...  p_d=C_{d|1..d-1}(u_d|u[1:(d-1)])
-#' @example
-#' to add
+#' @examples
+#' # example code
+#'
 #' @details
 #' BiCopHfunc1 is from VineCopula for conditional cdf C_{2|1}(v|u)
 #' BiCopHfunc2 is from VineCopula for conditional cdf C_{1|2}(u|v)
-#' 
+#'
+#' @export
 rvinepcond = function(uvec, A,fam,param1,param2,ntrunc=0,
    varname=numeric(0),iprint=FALSE)
 {
   # if lower triangular matrix, convert to upper tri matrix
-  if(is.lower.tri(A)){
+  if(fastmatrix::is.lower.tri(A)){
     A = rotate_180(A)
   }
-  if(is.lower.tri(fam)){
+  if(fastmatrix::is.lower.tri(fam)){
     fam = rotate_180(fam)
   }
-  if(is.lower.tri(param1)){
+  if(fastmatrix::is.lower.tri(param1)){
     param1 = rotate_180(param1)
   }
-  if(is.lower.tri(param2)){
+  if(fastmatrix::is.lower.tri(param2)){
     param2 = rotate_180(param2)
   }
-  
+
   d = ncol(A)
   ntrunc = floor(ntrunc)
   if(ntrunc<1 | ntrunc>=d) ntrunc = d-1
@@ -223,44 +227,44 @@ rvinepcond = function(uvec, A,fam,param1,param2,ntrunc=0,
   v = rep(0,d); vp = rep(0,d); s = rep(0,d);
   # tree 2
   if(ntrunc>=2)
-  { for(j in 2:d) 
-    { 
-      if(icomp[1,j]==1) vp[j] = BiCopHfunc2(uvec[A[1,j]],uvec[j],fam[1,j],param1[1,j],param2[1,j])
-      v[j] = BiCopHfunc1(uvec[A[1,j]],uvec[j],fam[1,j],param1[1,j],param2[1,j])
+  { for(j in 2:d)
+    {
+      if(icomp[1,j]==1) vp[j] = VineCopula::BiCopHfunc2(uvec[A[1,j]],uvec[j],fam[1,j],param1[1,j],param2[1,j])
+      v[j] = VineCopula::BiCopHfunc1(uvec[A[1,j]],uvec[j],fam[1,j],param1[1,j],param2[1,j])
     }
     vinepcond[2] = v[2]
-    for(j in 3:d) 
-    { if(A[2,j]<M[2,j]) s[j] = vp[M[2,j]] else s[j] = v[A[2,j]] } 
+    for(j in 3:d)
+    { if(A[2,j]<M[2,j]) s[j] = vp[M[2,j]] else s[j] = v[A[2,j]] }
     w = v; wp = vp
   }
   # remaining trees
   if(ntrunc>=3)
   { for(ell in 3:ntrunc)
-    { for(j in ell:d) 
-      { 
-        if(icomp[ell-1,j]==1) vp[j] = BiCopHfunc2(s[j],w[j],fam[ell-1,j],param1[ell-1,j],param2[ell-1,j])
-        v[j] = BiCopHfunc1( s[j],w[j], fam[ell-1,j],param1[ell-1,j],param2[ell-1,j])
+    { for(j in ell:d)
+      {
+        if(icomp[ell-1,j]==1) vp[j] = VineCopula::BiCopHfunc2(s[j],w[j],fam[ell-1,j],param1[ell-1,j],param2[ell-1,j])
+        v[j] = VineCopula::BiCopHfunc1( s[j],w[j], fam[ell-1,j],param1[ell-1,j],param2[ell-1,j])
       }
       vinepcond[ell] = v[ell]
-      for(j in (ell+1):d) 
-      { if(A[ell,j]<M[ell,j]) s[j] = vp[M[ell,j]] else s[j] = v[A[ell,j]] } 
-      w = v; 
+      for(j in (ell+1):d)
+      { if(A[ell,j]<M[ell,j]) s[j] = vp[M[ell,j]] else s[j] = v[A[ell,j]] }
+      w = v;
     }
   }
   if(ntrunc>1 & ntrunc<d)
   { ell = ntrunc+1
-    for(j in ell:d) 
-    { 
-      if(icomp[ell-1,j]==1) vp[j] = BiCopHfunc2(s[j],w[j],fam[ell-1,j],param1[ell-1,j],param2[ell-1,j])
-      v[j] = BiCopHfunc1(s[j],w[j],fam[ell-1,j],param1[ell-1,j],param2[ell-1,j])
-      vinepcond[j] = v[j] 
+    for(j in ell:d)
+    {
+      if(icomp[ell-1,j]==1) vp[j] = VineCopula::BiCopHfunc2(s[j],w[j],fam[ell-1,j],param1[ell-1,j],param2[ell-1,j])
+      v[j] = VineCopula::BiCopHfunc1(s[j],w[j],fam[ell-1,j],param1[ell-1,j],param2[ell-1,j])
+      vinepcond[j] = v[j]
     }
   }
   if(ntrunc==1)
   { ell = 2
-    for(j in ell:d) 
-    { v[j] = BiCopHfunc1(uvec[A[1,j]],uvec[j],fam[1,j],param1[ell-1,j],param2[ell-1,j])
-      vinepcond[j] = v[j] 
+    for(j in ell:d)
+    { v[j] = VineCopula::BiCopHfunc1(uvec[A[1,j]],uvec[j],fam[1,j],param1[ell-1,j],param2[ell-1,j])
+      vinepcond[j] = v[j]
     }
   }
   vinepcond = vinepcond[order(dict$Col1[2:(d+1)])]
@@ -270,35 +274,37 @@ rvinepcond = function(uvec, A,fam,param1,param2,ntrunc=0,
 
 #======================================================================
 
-# Vectorized versions
-
-#' @description 
+#' Vectorized versions of Rosenblatt transform (forward)
+#'
 #' Rosenblatt transform (forward) for R-vine based on diagonal order in vine array
-#'  This is R-vine simulation if p is a vector of independent U(0,1) 
-#'  Algorithms 17 and 18 in Joe (2014).
-#'  This function could be vectorized for simulations (random sample size n).
+#' This is R-vine simulation if p is a vector of independent U(0,1)
+#' Algorithms 17 and 18 in Joe (2014).
+#' This function could be vectorized for simulations (random sample size n).
+#'
 #' @param p nxd matrix with values in interval (0,1)
-#' @param A dxd vine array with 1:d on diagonal, d>=3 
+#' @param A dxd vine array with 1:d on diagonal, d>=3
 #'     if truncated vine, only rows 1 to ntrunc are used.
 #' @param fam dxd code matrix (VineCopula copula family index) .
-#' @param param1 dxd parameter matrix (VineCopula first copula parameter) 
+#' @param param1 dxd parameter matrix (VineCopula first copula parameter)
 #'     param1[l,j] for tree l, variable j.
-#' @param param2 dxd parameter matrix (VineCopula second copula parameter) 
+#' @param param2 dxd parameter matrix (VineCopula second copula parameter)
 #'     param2[l,j] for tree l, variable j; 0 if not needed.
 #' @param ntrunc truncation level, integer between 1 and d-1 (d-1 for no truncation)
 #' @param varname character vector of variable names, optional
 #' @param iprint print flag for intermediate calculations
-#' @return nxd matrix of values in (0,1)
+#' @returns nxd matrix of values in (0,1)
 #'   If p is matrix of independent U(0,1), then output is a random sample from the vine copula
 #'     based on A, fam, param1, param2, ntrunc
 #' that is, by row:
 #'  u1=p1, C_{2|1}^{-1}(p2|u1), C_{3|12}^{-1}(p3|u1,u2), ...  C_{d|1..d-1}^{-1}(p_d|u[1:(d-1)])
-#' @example
-#' to add
+#' @examples
+#' # example code
+#'
 #' @details
 #' BiCopHinv1 is from VineCopula for inverse of conditional cdf C_{2|1}^{-1}(v|u)
 #' BiCopHfunc2 is from VineCopula for conditional cdf C_{1|2}(u|v)
 #'
+#' @export
 rvineqcond_vec = function(p, A,fam,param1,param2,ntrunc=0,
    varname=numeric(0),iprint=FALSE)
 { d = ncol(A)
@@ -317,11 +323,11 @@ rvineqcond_vec = function(p, A,fam,param1,param2,ntrunc=0,
   qq = array(0,c(n,d,d)); v = array(0,c(n,d,d))
   u = matrix(0,n,d)
   u[,1] = p[,1]; qq[,1,1] = p[,1]; qq[,2,2] = p[,2];
-  u[,2] = BiCopHinv1(p[,1],p[,2],fam[1,2],param1[1,2],param2[1,2]); 
+  u[,2] = VineCopula::BiCopHinv1(p[,1],p[,2],fam[1,2],param1[1,2],param2[1,2]);
   qq[,1,2] = u[,2]
-  if(icomp[1,2]==1) 
-  { v[,1,2] = BiCopHfunc2(u[,1],u[,2],fam[1,2],param1[1,2],param2[1,2]) }
-  # the main loop 
+  if(icomp[1,2]==1)
+  { v[,1,2] = VineCopula::BiCopHfunc2(u[,1],u[,2],fam[1,2],param1[1,2],param2[1,2]) }
+  # the main loop
   for(j in 3:d)  # variable index
   { tt = min(ntrunc,j-1)
     qq[,tt+1,j] = p[,j]
@@ -329,19 +335,19 @@ rvineqcond_vec = function(p, A,fam,param1,param2,ntrunc=0,
     { for(ell in seq(tt,2)) # tree index
       { if(A[ell,j]==M[ell,j]) { s = qq[,ell,A[ell,j]] }
         else { s = v[,ell-1,M[ell,j]] }
-        qq[,ell,j] = BiCopHinv1(s,qq[,ell+1,j], fam[ell,j], param1[ell,j], param2[ell,j]); 
+        qq[,ell,j] = VineCopula::BiCopHinv1(s,qq[,ell+1,j], fam[ell,j], param1[ell,j], param2[ell,j]);
       }
-    } 
-    qq[,1,j] = BiCopHinv1(u[,A[1,j]],qq[,2,j], fam[1,j], param1[1,j], param2[1,j])
-    u[,j] = qq[,1,j] 
+    }
+    qq[,1,j] = VineCopula::BiCopHinv1(u[,A[1,j]],qq[,2,j], fam[1,j], param1[1,j], param2[1,j])
+    u[,j] = qq[,1,j]
     # set up for next iteration (not needed for last j=d)
-    v[,1,j] = BiCopHfunc2(u[,A[1,j]],u[,j], fam[1,j],param1[1,j], param2[1,j])
+    v[,1,j] = VineCopula::BiCopHfunc2(u[,A[1,j]],u[,j], fam[1,j],param1[1,j], param2[1,j])
     if(tt>1)
     { for(ell in 2:tt)
       { if(A[ell,j]==M[ell,j]) { s = qq[,ell,A[ell,j]] }
         else { s = v[,ell-1,M[ell,j]] }
-        if(icomp[ell,j]==1) 
-        { v[,ell,j] = BiCopHfunc2(s, qq[,ell,j], fam[ell,j], param1[ell,j], param2[ell,j]) 
+        if(icomp[ell,j]==1)
+        { v[,ell,j] = VineCopula::BiCopHfunc2(s, qq[,ell,j], fam[ell,j], param1[ell,j], param2[ell,j])
         }
       }
     }
@@ -354,32 +360,34 @@ rvineqcond_vec = function(p, A,fam,param1,param2,ntrunc=0,
 
 #------------------------------------------------------------
 
-# vectorized version Rosenblatt inverse
-
-#' @description 
+#' vectorized version Rosenblatt inverse
+#'
 #' Rosenblatt transform (inverse) for R-vine based on diagonal order in vine array
 #'  If umat is generated from the vine copula based on A,fam,param1,param1,ntrunc
-#'    then this function recovers the vector of U(0,1) used for generation.
+#'  then this function recovers the vector of U(0,1) used for generation.
 #'  The steps are embeded in Algorithm 4 in Joe (2014).
+#'
 #' @param umat nxd matrix with values in interval (0,1)
-#' @param A dxd vine array with 1:d on diagonal, d>=3 
+#' @param A dxd vine array with 1:d on diagonal, d>=3
 #'     if truncated vine, only rows 1 to ntrunc are used.
 #' @param fam dxd code matrix (VineCopula copula family index) .
-#' @param param1 dxd parameter matrix (VineCopula first copula parameter) 
+#' @param param1 dxd parameter matrix (VineCopula first copula parameter)
 #'     param1[l,j] for tree l, variable j.
-#' @param param2 dxd parameter matrix (VineCopula second copula parameter) 
+#' @param param2 dxd parameter matrix (VineCopula second copula parameter)
 #'     param2[l,j] for tree l, variable j; 0 if not needed.
 #' @param ntrunc truncation level, integer between 1 and d-1 (d-1 for no truncation)
 #' @param varname character vector of variable names, optional
 #' @param iprint print flag for intermediate calculations
-#' @return nxd matrix of values in (0,1), by row:
+#' @returns nxd matrix of values in (0,1), by row:
 #' p1=u1, p2=C_{2|1}(u2|u1), p3=C_{3|12}(u3|u1,u2), ...  p_d=C_{d|1..d-1}(u_d|u[1:(d-1)])
-#' @example
-#' to add
+#' @examples
+#' # example code
+#'
 #' @details
 #' BiCopHfunc1 is from VineCopula for conditional cdf C_{2|1}(v|u)
 #' BiCopHfunc2 is from VineCopula for conditional cdf C_{1|2}(u|v)
-#' 
+#'
+#' @export
 rvinepcond_vec = function(umat, A,fam,param1,param2,ntrunc=0,
    varname=numeric(0),iprint=FALSE)
 { d = ncol(A)
@@ -399,44 +407,44 @@ rvinepcond_vec = function(umat, A,fam,param1,param2,ntrunc=0,
   v = matrix(0,n,d); vp = matrix(0,n,d); s = matrix(0,n,d);
   # tree 2
   if(ntrunc>=2)
-  { for(j in 2:d) 
-    { 
-      if(icomp[1,j]==1) vp[,j] = BiCopHfunc2(umat[,A[1,j]],umat[,j],fam[1,j],param1[1,j],param2[1,j])
-      v[,j] = BiCopHfunc1(umat[,A[1,j]],umat[,j],fam[1,j],param1[1,j],param2[1,j])
+  { for(j in 2:d)
+    {
+      if(icomp[1,j]==1) vp[,j] = VineCopula::BiCopHfunc2(umat[,A[1,j]],umat[,j],fam[1,j],param1[1,j],param2[1,j])
+      v[,j] = VineCopula::BiCopHfunc1(umat[,A[1,j]],umat[,j],fam[1,j],param1[1,j],param2[1,j])
     }
     vinepcond[,2] = v[,2]
-    for(j in 3:d) 
-    { if(A[2,j]<M[2,j]) s[,j] = vp[,M[2,j]] else s[,j] = v[,A[2,j]] } 
+    for(j in 3:d)
+    { if(A[2,j]<M[2,j]) s[,j] = vp[,M[2,j]] else s[,j] = v[,A[2,j]] }
     w = v; wp = vp
   }
   # remaining trees
   if(ntrunc>=3)
   { for(ell in 3:ntrunc)
-    { for(j in ell:d) 
-      { 
-        if(icomp[ell-1,j]==1) vp[,j] = BiCopHfunc2(s[,j],w[,j],fam[ell-1,j],param1[ell-1,j],param2[ell-1,j])
-        v[,j] = BiCopHfunc1( s[,j],w[,j], fam[ell-1,j],param1[ell-1,j],param2[ell-1,j])
+    { for(j in ell:d)
+      {
+        if(icomp[ell-1,j]==1) vp[,j] = VineCopula::BiCopHfunc2(s[,j],w[,j],fam[ell-1,j],param1[ell-1,j],param2[ell-1,j])
+        v[,j] = VineCopula::BiCopHfunc1( s[,j],w[,j], fam[ell-1,j],param1[ell-1,j],param2[ell-1,j])
       }
       vinepcond[,ell] = v[,ell]
-      for(j in (ell+1):d) 
-      { if(A[ell,j]<M[ell,j]) s[,j] = vp[,M[ell,j]] else s[,j] = v[,A[ell,j]] } 
-      w = v; 
+      for(j in (ell+1):d)
+      { if(A[ell,j]<M[ell,j]) s[,j] = vp[,M[ell,j]] else s[,j] = v[,A[ell,j]] }
+      w = v;
     }
   }
   if(ntrunc>1 & ntrunc<d)
   { ell = ntrunc+1
-    for(j in ell:d) 
-    { 
-      if(icomp[ell-1,j]==1) vp[,j] = BiCopHfunc2(s[,j],w[,j],fam[ell-1,j],param1[ell-1,j],param2[ell-1,j])
-      v[,j] = BiCopHfunc1(s[,j],w[,j],fam[ell-1,j],param1[ell-1,j],param2[ell-1,j])
-      vinepcond[,j] = v[,j] 
+    for(j in ell:d)
+    {
+      if(icomp[ell-1,j]==1) vp[,j] = VineCopula::BiCopHfunc2(s[,j],w[,j],fam[ell-1,j],param1[ell-1,j],param2[ell-1,j])
+      v[,j] = VineCopula::BiCopHfunc1(s[,j],w[,j],fam[ell-1,j],param1[ell-1,j],param2[ell-1,j])
+      vinepcond[,j] = v[,j]
     }
   }
   if(ntrunc==1)
   { ell = 2
-    for(j in ell:d) 
-    { v[,j] = BiCopHfunc1(umat[,A[1,j]],umat[,j],fam[1,j],param1[ell-1,j],param2[ell-1,j])
-      vinepcond[,j] = v[,j] 
+    for(j in ell:d)
+    { v[,j] = VineCopula::BiCopHfunc1(umat[,A[1,j]],umat[,j],fam[1,j],param1[ell-1,j],param2[ell-1,j])
+      vinepcond[,j] = v[,j]
     }
   }
   vinepcond = vinepcond[,order(dict$Col1[2:(d+1)])]
@@ -462,7 +470,7 @@ afam_d2 = matrix(4, nrow=2, ncol=2) # all Gumbel
 u2 = rvineqcond(p2,A2,afam_d2,apar1_d2,apar2_d2,iprint=FALSE)
 print(u2)
 rvinepcond(u2,A2,afam_d2,apar1_d2,apar2_d2,iprint=FALSE)
-  
+
 ## d=4 examples
 umat4 = matrix(c(.1,.4,.6,.7, .2,.9,.4,.3), 2,4, byrow=T)
 
@@ -482,14 +490,14 @@ for(i in 1:nrow(umat4))
   u = rvineqcond(p,A4,afam4,apar1,apar2,ntrunc=3,iprint=FALSE)
   print(u)
 }
-#       p1        p2        p3        p4 
-#0.1000000 0.7794878 0.9351206 0.9545815 
-# u1  u2  u3  u4 
-#0.1 0.4 0.6 0.7 
-#        p1         p2         p3         p4 
-#0.20000000 0.99443237 0.08760435 0.13443775 
-# u1  u2  u3  u4 
-#0.2 0.9 0.4 0.3 
+#       p1        p2        p3        p4
+#0.1000000 0.7794878 0.9351206 0.9545815
+# u1  u2  u3  u4
+#0.1 0.4 0.6 0.7
+#        p1         p2         p3         p4
+#0.20000000 0.99443237 0.08760435 0.13443775
+# u1  u2  u3  u4
+#0.2 0.9 0.4 0.3
 
 
 for(itrunc in 3:1)
@@ -499,18 +507,18 @@ for(itrunc in 3:1)
   print(u)
 }
 
-#       p1        p2        p3        p4 
+#       p1        p2        p3        p4
 #0.1000000 0.7794878 0.9351206 0.9545815  # ntrunc=3
-# u1  u2  u3  u4 
-#0.1 0.4 0.6 0.7 
-#       p1        p2        p3        p4 
+# u1  u2  u3  u4
+#0.1 0.4 0.6 0.7
+#       p1        p2        p3        p4
 #0.1000000 0.7794878 0.9351206 0.9807228   # ntrunc=2
-# u1  u2  u3  u4 
-#0.1 0.4 0.6 0.7 
-#       p1        p2        p3        p4 
+# u1  u2  u3  u4
+#0.1 0.4 0.6 0.7
+#       p1        p2        p3        p4
 #0.1000000 0.7794878 0.9345996 0.9741819   # ntrunc=1
-# u1  u2  u3  u4 
-#0.1 0.4 0.6 0.7 
+# u1  u2  u3  u4
+#0.1 0.4 0.6 0.7
 
 pmat = rvinepcond_vec(umat4,A4,afam4,apar1,apar2,ntrunc=3,iprint=T)
 print(pmat)
@@ -556,18 +564,18 @@ for(itrunc in 3:1)
   u = rvineqcond(p,B4,bfam4,bpar1,bpar2,ntrunc=itrunc,iprint=FALSE)
   print(u)
 }
-#       p1        p2        p3        p4 
+#       p1        p2        p3        p4
 #0.1000000 0.9763016 0.9908524 0.8942927  ntrunc=3
-# u1  u2  u3  u4 
-#0.1 0.4 0.6 0.7 
-#       p1        p2        p3        p4 
+# u1  u2  u3  u4
+#0.1 0.4 0.6 0.7
+#       p1        p2        p3        p4
 #0.1000000 0.9763016 0.9908524 0.8173441  ntrunc=2
-# u1  u2  u3  u4 
-#0.1 0.4 0.6 0.7 
-#       p1        p2        p3        p4 
+# u1  u2  u3  u4
+#0.1 0.4 0.6 0.7
+#       p1        p2        p3        p4
 #0.1000000 0.9763016 0.8040850 0.7054554  ntrunc=1
-# u1  u2  u3  u4 
-#0.1 0.4 0.6 0.7 
+# u1  u2  u3  u4
+#0.1 0.4 0.6 0.7
 
 
 pmat = rvinepcond_vec(umat4,B4,bfam4,bpar1,bpar2,ntrunc=3,iprint=T)
@@ -596,11 +604,11 @@ print(u)
 ii = 1:3 # subvine
 p3 = rvinepcond(umat4[1,ii],B4[ii,ii],bfam4[ii,ii],bpar1[ii,ii],bpar2[ii,ii],ntrunc=2,iprint=F)
 print(p3)
-#       p1        p2        p3 
+#       p1        p2        p3
 #0.1000000 0.9763016 0.9908524
 u3 = rvineqcond(p3,B4[ii,ii],bfam4[ii,ii],bpar1[ii,ii],bpar2[ii,ii],ntrunc=2,iprint=FALSE)
 print(u3)
-# u1  u2  u3 
+# u1  u2  u3
 #0.1 0.4 0.6
 
 
@@ -624,22 +632,22 @@ for(itrunc in 4:1)
   u = rvineqcond(p,B5,bfam5,bpar1,bpar2,ntrunc=itrunc,iprint=FALSE)
   print(u)
 }
-#       p1        p2        p3        p4        p5 
+#       p1        p2        p3        p4        p5
 #0.1000000 0.9763016 0.8595233 0.9245306 0.4096694  ntrunc=4
-# u1  u2  u3  u4  u5 
-#0.1 0.4 0.6 0.7 0.4 
-#       p1        p2        p3        p4        p5 
+# u1  u2  u3  u4  u5
+#0.1 0.4 0.6 0.7 0.4
+#       p1        p2        p3        p4        p5
 #0.1000000 0.9763016 0.8595233 0.9245306 0.4524849  ntrunc=3
-# u1  u2  u3  u4  u5 
-#0.1 0.4 0.6 0.7 0.4 
-#       p1        p2        p3        p4        p5 
+# u1  u2  u3  u4  u5
+#0.1 0.4 0.6 0.7 0.4
+#       p1        p2        p3        p4        p5
 #0.1000000 0.9763016 0.8595233 0.9470452 0.3273888  ntrunc=2
-# u1  u2  u3  u4  u5 
-#0.1 0.4 0.6 0.7 0.4 
-#       p1        p2        p3        p4        p5 
+# u1  u2  u3  u4  u5
+#0.1 0.4 0.6 0.7 0.4
+#       p1        p2        p3        p4        p5
 #0.1000000 0.9763016 0.9839769 0.8602944 0.2100976  ntrunc=1
-# u1  u2  u3  u4  u5 
-#0.1 0.4 0.6 0.7 0.4 
+# u1  u2  u3  u4  u5
+#0.1 0.4 0.6 0.7 0.4
 
 p = rvinepcond_vec(umat5,B5p,bfam5,bpar1,bpar2,ntrunc=4,iprint=T)
 print(p)
@@ -663,12 +671,12 @@ print(umat5)
 ii = 1:3 # subvine
 p3 = rvinepcond(umat5[1,ii],B5[ii,ii],bfam5[ii,ii],bpar1[ii,ii],bpar2[ii,ii],ntrunc=2,iprint=F)
 print(p3)
-#       p1        p2        p3 
-#0.1000000 0.9763016 0.8595233 
+#       p1        p2        p3
+#0.1000000 0.9763016 0.8595233
 u3 = rvineqcond(p3,B5[ii,ii],bfam5[ii,ii],bpar1[ii,ii],bpar2[ii,ii],ntrunc=2,iprint=FALSE)
 print(u3)
-# u1  u2  u3 
-#0.1 0.4 0.6 
+# u1  u2  u3
+#0.1 0.4 0.6
 
 ii = 1:2 # subvine (doesn't work)
 ii = 1:4 # subvine

@@ -6,10 +6,11 @@ Author: Chun Fang (Frances) Cheng
 Maintainer: The package maintainer <frances.cheng@stat.ubc.ca>
 Description: More about what it does (maybe more than one line)
     Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Imports: 
     combinat,
     fastmatrix,
     VineCopula
+RoxygenNote: 7.3.2
