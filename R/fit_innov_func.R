@@ -1,7 +1,7 @@
 
 ################################################
 #                                              #
-#  Functions for fitting Bivariate Copula      #
+#  Functions for fitting innovation model      #
 #                                              #
 ################################################
 
