@@ -73,7 +73,7 @@ fit_bi_copula = function(uts_1, uts_2 = NULL, print = FALSE, ...){
 #' @param k Markov order k >= 1, default is k = 1
 #' @param print whether to print the result, default to FALSE
 #' @param ... additional arguments pass to BiCopSelect
-#' @returns list of best fitted bivariate copulas, total negative loglikelihood,
+#' @returns list of best fitted bivariate copulas, total transitional loglikelihood,
 #'         and overall C_{2|1} (transition probability)
 #' @examples
 #' #source(file.path(proj, "simulation", "sim-univariate-mkp.R"))
@@ -93,7 +93,7 @@ fit_uni_mk = function(uts, k = 1, print = FALSE, ...){
 
   # initialize the value
   cop_list = list()
-  tot_nllk = 0
+  trans_logLik = 0
 
   for(i in 1:k){
 
@@ -105,11 +105,11 @@ fit_uni_mk = function(uts, k = 1, print = FALSE, ...){
       cop_new = fit_bi_copula(uts_1 = cop_prev$C1g2[-n_i], uts_2 = cop_prev$C2g1[-1], ...)
     }
 
-    # total nllk
+    # transitional loglik
     if(k > i){
-      tot_nllk = tot_nllk - sum(log(cop_new$c12)[-(1:(k-i))])
+      trans_logLik = trans_logLik + sum(log(cop_new$c12)[-(1:(k-i))])
     }else if(i == k){
-      tot_nllk = tot_nllk - cop_new$logLik
+      trans_logLik = trans_logLik + sum(log(cop_new$c12))
     }
 
     # add the new fitted copula
@@ -120,7 +120,7 @@ fit_uni_mk = function(uts, k = 1, print = FALSE, ...){
   }
 
   # AIC
-  AIC = 2*k + 2*tot_nllk
+  # AIC = 2*k + 2*tot_nllk
 
   # Values
   best_cop = sapply(cop_list, function(x) x$family)
@@ -133,10 +133,10 @@ fit_uni_mk = function(uts, k = 1, print = FALSE, ...){
     cat("with param", best_param, "\n")
     cat("with param2", best_param2, "\n")
     cat("with tau", best_tau, "\n")
-    cat("and overall negative log likelihood", tot_nllk, "\n")
+    cat("and overall transitional log likelihood", trans_logLik, "\n")
   }
 
-  return(list(fitted_cop = cop_list, tot_nllk = tot_nllk, C2g1 = cop_prev$C2g1,
+  return(list(fitted_cop = cop_list, trans_logLik = trans_logLik, C2g1 = cop_prev$C2g1,
               family_vec = best_cop, par_vec = best_param, par2_vec = best_param2,
               tau_vec = best_tau))
 }
@@ -155,7 +155,7 @@ fit_uni_mk = function(uts, k = 1, print = FALSE, ...){
 #' @param k Markov order k >= 1, default is k = 1
 #' @param print whether to print the result, default to FALSE
 #' @param ... additional arguments pass to BiCopSelect
-#' @returns best fitted families, parameter estimates, total negative loglikelihood
+#' @returns best fitted families, parameter estimates, total transitional loglikelihood
 #' @examples
 #' #source(file.path(proj, "simulation", "sim-bivariate-mk1.R"))
 #'
@@ -186,13 +186,13 @@ fit_innov = function(dat, k = 1, print = FALSE, ...){
   innov_dat = do.call(cbind, lapply(fit_all_col, function(x) x$C2g1))
   fit_innov = VineCopula::RVineStructureSelect(data = innov_dat, ...)
 
-  # total nllk
-  tot_nllk = sum(sapply(fit_all_col, function(x) x$tot_nllk)) - fit_innov$logLik
+  # total transitional loglikelihood
+  trans_logLik = sum(sapply(fit_all_col, function(x) x$trans_logLik)) - fit_innov$logLik
 
   if(print){
-    cat("The Negative loglik of the best fitting Rvine innovation model is", tot_nllk)
+    cat("The transitional loglik of the best fitting Rvine innovation model is", trans_logLik)
   }
 
-  return(list(univariate_fit = fit_all_col, innov_fit = fit_innov, tot_nllk = tot_nllk))
+  return(list(univariate_fit = fit_all_col, innov_fit = fit_innov, trans_logLik = trans_logLik))
 }
 

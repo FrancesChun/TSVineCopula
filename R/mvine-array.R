@@ -49,6 +49,14 @@ dvine <- function(d){
   return(dvinearray)
 }
 
+#' Rotate a matrix by 180 degree
+#'
+#' @param mat Matrix
+#' @returns Same matrix except that it has been rotated by 180 degree
+#' @export
+rotate_180 <- function(mat){
+  mat[nrow(mat):1, ncol(mat):1]
+}
 
 #' Generate A Bivariate M-vine array
 #'

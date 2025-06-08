@@ -16,7 +16,7 @@ fit_uni_mk(uts, k = 1, print = FALSE, ...)
 \item{...}{additional arguments pass to BiCopSelect}
 }
 \value{
-list of best fitted bivariate copulas, total negative loglikelihood,
+list of best fitted bivariate copulas, total transitional loglikelihood,
         and overall C_{2|1} (transition probability)
 }
 \description{

@@ -17,7 +17,7 @@ univariate vector}
 \item{...}{additional arguments pass to BiCopSelect}
 }
 \value{
-best fitted families, parameter estimates, total negative loglikelihood
+best fitted families, parameter estimates, total transitional loglikelihood
 }
 \description{
 Find the best fitted Bivariate copulas for d-variate Markov order k
