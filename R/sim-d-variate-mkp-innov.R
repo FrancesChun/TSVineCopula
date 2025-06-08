@@ -9,23 +9,6 @@
 
 ##############################################################################
 
-#' Generate A D-vine array with 1:d on diagonal
-#' @param d Number of variables, must be an integer
-#' @returns A D-vine array with 1:d on diagonal
-dvine <- function(d){
-  dvinearray = matrix(0, nrow = d, ncol = d)
-  for(i in 1:d){
-    # if last row
-    if(i == d){
-      dvinearray[i,i] <- i
-    }else{
-      # otherwise
-      dvinearray[i,i:d] <- c(i,1:(d-i))
-    }
-  }
-  return(dvinearray)
-}
-
 
 #' Simulate d-variate Markov order k time series based on Innovation model
 #' @description
@@ -84,6 +67,8 @@ dvine <- function(d){
 #' test_uni[[1]]$fitted_cop[[1]]$par
 #' test_uni[[2]]$fitted_cop[[1]]$family
 #' test_uni[[2]]$fitted_cop[[1]]$par
+#'
+#' @export
 sim_innov = function(n, innov.RVine, uni.Rvine,
                         trunc = 0, thin = 1, seed=FALSE){
   if(is.numeric(seed)){

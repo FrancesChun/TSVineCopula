@@ -65,6 +65,8 @@
 #' mvine_dat = sim_svine(5000,d2_mk2,afam4,apar1,apar2, seed = 123)
 #'
 #' testfit = fit_svine(dat = mvine_dat, k=2, familyset = c(0,1,4,5,14))
+#'
+#' @export
 sim_svine = function(n, vinematrix, fam, param1, param2, d=2,
                           seed = FALSE, ntrunc=0,varname=numeric(0),iprint=FALSE,
                           trunc = 0, thin = 1){

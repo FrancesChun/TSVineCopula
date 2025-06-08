@@ -39,6 +39,7 @@
 #' cop1$familyname
 #' cop1$tau
 #'
+#' @export
 fit_bi_copula = function(uts_1, uts_2 = NULL, print = FALSE, ...){
 
   # if only 1 times series vector, then we assume it is X_{t-1} and X_t
@@ -142,8 +143,6 @@ fit_uni_mk = function(uts, k = 1, print = FALSE, ...){
 }
 
 
-
-# TODO: rotations = FALSE!
 #' Fit d-variate Markov order k innovation model
 #'
 #' @description

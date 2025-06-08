@@ -72,4 +72,5 @@ test_uni[[1]]$fitted_cop[[1]]$family
 test_uni[[1]]$fitted_cop[[1]]$par
 test_uni[[2]]$fitted_cop[[1]]$family
 test_uni[[2]]$fitted_cop[[1]]$par
+
 }
