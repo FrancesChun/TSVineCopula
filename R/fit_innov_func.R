@@ -195,3 +195,147 @@ fit_innov = function(dat, k = 1, print = FALSE, ...){
   return(list(univariate_fit = fit_all_col, innov_fit = fit_innov, trans_logLik = trans_logLik))
 }
 
+
+#' Return the loglik on a given dataset based on the univariate Markov order k model
+#'
+#' @description Return the out of sample transitional loglikelhood of the test
+#'              sample based on the univariate Markov order k model
+#' @param uni_model output returned by fit_uni_mk
+#' @param uts univariate vector
+#' @param separate Logical; whether log-likelihoods are returned point wisely
+#'              (default: separate = FALSE)
+#' @param return_innov Logical; whether return innovations a = F_{k|1,...,k-1}
+#'              (default: return_innov = FALSE)
+#' @returns out-of-sample transitional loglikelihood on the test set
+#' @examples
+#' # Load necessary functions
+#' source(file.path(proj, "simulation", "sim-univariate-mkp.R"))
+#'
+#' ## first example for d=2, all Gumbel
+#' apar1 = matrix(c(0, 2, 0,0),2,2, byrow=T)
+#' apar2 = matrix(0,2,2)
+#' afam4 = matrix(4,2,2) # all Gumbel
+#'
+#' uts_1 = sim_uni_mk(n=5000,fam=afam4,param1=apar1,param2=apar2)
+#'
+#' # fit
+#' fit_uts = fit_uni_mk(uts_1, k = 4, familyset = c(1,4,5,14), print = TRUE)
+#'
+#' fit_uts$trans_logLik
+#'
+#' # test function
+#' out_llk = uni_out_sample_logLik(fit_uts, uts_1, separate = FALSE)
+#' out_llk
+#'
+#' ## first example for d=4, all Gumbel
+#' apar1 = matrix(c(0, 2,2,2, 0,0, 1.5,1.5, 0,0,0,1.8, 0,0,0,0),4,4, byrow=T)
+#' apar2 = matrix(0,4,4)
+#' afam4 = matrix(4,4,4) # all Gumbel
+#'
+#' uts_3 = sim_uni_mk(n=5000,fam=afam4,param1=apar1,param2=apar2)
+#'
+#' # fit
+#' fit_uts = fit_uni_mk(uts_3, k = 3, familyset = c(1,4,5,14), print = TRUE)
+#'
+#' fit_uts$trans_logLik
+#'
+#' # test function
+#' out_llk = uni_out_sample_logLik(fit_uts, uts_3, return_innov = TRUE)
+#' out_llk
+#'
+#' @export
+uni_out_sample_logLik = function(uni_model, uts, separate = FALSE, return_innov = FALSE){
+
+  # Markov order k
+  k = length(uni_model$fitted_cop)
+
+  # Initialization
+  cdfcond1_2_prev = uts
+  cdfcond2_1_prev = uts
+  pdfcond2_1_prev = rep(1, times = length(uts))
+
+  for(i in 1:k){
+
+    # sample size
+    n_i = length(cdfcond1_2_prev)
+
+    # Conditional Distribution
+    cdfcond = VineCopula::BiCopHfunc(cdfcond1_2_prev[-n_i], cdfcond2_1_prev[-1],
+                                     family = uni_model$family_vec[i],
+                                     par = uni_model$par_vec[i],
+                                     par2 = uni_model$par2_vec[i])
+
+    # Density
+    pdfcond2_1 = VineCopula::BiCopPDF(cdfcond1_2_prev[-n_i], cdfcond2_1_prev[-1],
+                                      family = uni_model$family_vec[i],
+                                      par = uni_model$par_vec[i],
+                                      par2 = uni_model$par2_vec[i])*(pdfcond2_1_prev[-1])
+
+    # update
+    cdfcond1_2_prev = cdfcond$hfunc2
+    cdfcond2_1_prev = cdfcond$hfunc1
+    pdfcond2_1_prev = pdfcond2_1
+  }
+
+  if(separate){
+    trans_logLik = log(pdfcond2_1)
+  }else{
+    trans_logLik = sum(log(pdfcond2_1))
+  }
+
+  if(return_innov){
+    return(list(trans_logLik = trans_logLik, innov = cdfcond2_1_prev))
+  }else{
+    return(trans_logLik)
+  }
+}
+
+
+#' Return the loglik on a given dataset based on the Markov order k innovation model
+#'
+#' @description Return the out of sample transitional loglikelhood of the test
+#'              sample based on the Markov order k innovation model
+#' @param innov_model innovation in the form of the output of fit_innov function;
+#'              list of length 3 where first gives univariate fit, second element
+#'              gives innovations fit and last gives the transitional loglikelihood
+#' @param umat matrix with number of columns = d; each column corresponds to a
+#'            univariate vector
+#' @returns out-of-sample transitional loglikelihood on umat
+#' @examples
+#' # example code
+#' apar1x = matrix(c(0, 2,2,2, 0,0, 1.5,1.5, 0,0,0,1.2, 0,0,0,0),4,4, byrow=T)
+#' apar2x = matrix(0,4,4)
+#' afam4x = matrix(4,4,4) # all Gumbel
+#'
+#' apar1y = matrix(c(0, 1.5,1.5,1.5, 0,0, 1.7,1.7, 0,0,0,2, 0,0,0,0),4,4, byrow=T)
+#' apar2y = matrix(0,4,4)
+#' afam4y = matrix(4,4,4) # all Gumbel
+#'
+#' testing = sim_bi_innov_mkp(n = 5000, family.innov = 4, par.innov = 2,
+#'                            family.1 = afam4x, par.1 = apar1x, par2.1 = apar2x,
+#'                            family.2 = afam4y, par.2 = apar1y, par2.2 = apar2y,
+#'                            unif.margin = TRUE)
+#'
+#' testfit = fit_innov(dat = testing$dat, k=3, familyset = c(0,1,4,5,14))
+#' testfit$trans_logLik
+#' innov_out_sample_logLik(testfit, testing$dat)
+#'
+#' @export
+innov_out_sample_logLik = function(innov_model, umat){
+
+  # univariate fit
+  d = ncol(umat)
+  all_uni = lapply(1:d, function(i) uni_out_sample_logLik(uni_model = innov_model$univariate_fit[[i]],
+                                                          uts = umat[, i], return_innov = TRUE))
+
+  # innovation data
+  innov_dat = do.call(cbind, lapply(all_uni, function(x) x$innov))
+
+  # loglik based on innovation
+  innov_loglik = VineCopula::RVineLogLik(data = innov_dat, RVM = innov_model$innov_fit)
+
+  # total nllk
+  trans_logLik = sum(sapply(all_uni, function(x) x$trans_logLik)) + innov_loglik$loglik
+
+  return(trans_logLik)
+}
