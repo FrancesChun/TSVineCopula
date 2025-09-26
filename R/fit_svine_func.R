@@ -144,14 +144,14 @@ fit_svine = function(dat, k = 1, train_prop = 1, ...){
         df_test_sub = df_test[,1:(d*k)]
         logLik_test_sub = VineCopula::RVineLogLik(df_test_sub, RVM = fitRvine_sub)
 
-        fitRvine$test_trans_logLik = logLik_test_full$loglik - logLik_test_sub$loglik
+        fitRvine$test_trans_logLik = (logLik_test_full$loglik - logLik_test_sub$loglik)/nrow(df_test)
         # ABOVE ARE TEST SET
 
         # add
         fitRvine$var_order = i
 
         # transition probability f_{x_{t+k}|x_{t+k-1},...,x_{t}}
-        fitRvine$trans_logLik = fitRvine$logLik - fitRvine_sub$logLik
+        fitRvine$trans_logLik = (fitRvine$logLik - fitRvine_sub$logLik)/nrow(df)
         result = append(result, list(fitRvine))
       }
 
