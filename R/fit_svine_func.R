@@ -5,6 +5,30 @@
 #                                  #
 ####################################
 
+#' Convert lower triangular matrix to upper triangular matrix
+#'
+#' @description
+#' Convert lower triangular matrix to upper triangular matrix and convert all
+#' NA entries to 0 entries
+#'
+#' @param mat triangular matrix
+#' @param NA_to_0 Boolean, whether to convert NA to 0; default is TRUE
+#' @returns Upper triangular matrix
+#' @export
+to_upper_tri <- function(mat, NA_to_0 = TRUE){
+
+  outmat = mat
+  if(NA_to_0){
+    outmat[is.na(outmat)] <- 0
+  }
+
+  if(fastmatrix::is.lower.tri(outmat)){
+    outmat = rotate_180(outmat)
+  }
+
+  return(outmat)
+}
+
 
 #' Helper function for fit_svine
 #'
@@ -36,6 +60,207 @@ extend_df = function(dat, var_order, k=1){
 
   return(dat_ext)
 }
+
+
+#' Return averaged par matrix
+#'
+#' @param par par matrix with inconsistent entries
+#' @param d Markov order k >= 1, default is k = 1
+#' @returns Averaged par matrix
+#'
+out_svine_par = function(par, d=2){
+
+  mat = par
+  n = nrow(par)
+
+  average_spaced_all_starts <- function(vec, d) {
+    m <- length(vec)
+    newvec <- vec
+
+    if(m > d){
+      for (start in 1:d) {
+        indices <- seq(start, m, by = d)
+        mean_val <- mean(vec[indices])
+        newvec[indices] <- mean_val
+      }
+    }
+
+    return(newvec)
+  }
+
+  if(fastmatrix::is.lower.tri(par)){
+
+    for(i in 2:n){
+      mat[i, 1:(i-1)] = average_spaced_all_starts(par[i, 1:(i-1)], d)
+    }
+
+  }else if(fastmatrix::is.upper.tri(par)){
+
+    for(i in 1:(n-1)){
+      mat[i, (i+1):n] = average_spaced_all_starts(par[i, (i+1):n], d)
+    }
+
+  }
+
+  return(mat)
+}
+
+
+#' Return Consistent Model
+#'
+#' @description Return Consistent Model
+#' @param Smodel list of length 4, must contain (Matrix, family, par, par2)
+#' @param d number of variables, default is d = 2
+#' @returns Consistent Model (list of length 4)
+#'
+return_consistent_model = function(Smodel, d=2){
+
+  # check consistent family
+  avg_family = out_svine_par(Smodel$family, d)
+  if(!all.equal(avg_family,Smodel$family)){
+    stop(paste("Error: Family matrix is not consistent.",
+               "Family matrix is", Smodel$family))
+  }
+
+  Smodel_new = Smodel
+  Smodel_new$par = out_svine_par(Smodel$par, d)
+  Smodel_new$par2 = out_svine_par(Smodel$par2, d)
+
+  return(Smodel_new)
+}
+
+
+
+
+
+#' Calculates the log-likelihood of a S-vine copula model
+#'
+#' @description Calculates the log-likelihood of a S-vine copula model for a
+#'              given copula data set.
+#' @param data matrix with number of columns = d; each column corresponds to a
+#'            univariate vector with uniform margin
+#' @param Smodel list of at least length 5, must contain (Matrix, family, par, par2, var_order)
+#' @returns log-likelihood
+#' @examples
+#' # example for d=4, all Gaussian
+#' d2_mk1 = matrix(c(1,1,1,3,
+#'                   0,2,2,1,
+#'                   0,0,3,2,
+#'                   0,0,0,4),
+#'                 nrow = 4, byrow = TRUE)
+#' apar1 = matrix(c(0, 0.4, 0.5, 0.4,
+#'                  0, 0, 0.2, 0.3,
+#'                  0, 0, 0, 0.2,
+#'                  0, 0, 0, 0),
+#'                4,4, byrow=T)
+#' apar2 = matrix(0,4,4)
+#' afam4 = matrix(1,4,4) # all Gaussian
+#'
+#' # simulation
+#' set.seed(123)
+#' mvine_dat = sim_svine(n = 5000, vinematrix = d2_mk1, fam = afam4,
+#' #'                       param1 = apar1, param2 = apar2)
+#'
+#' # fit
+#' testfit = SVineCopSelect(data = mvine_dat, Matrix = d2_mk1, var_order = c(1,2),
+#'                          k = 1, familyset = c(0,1,4,5,14))
+#' summary(testfit)
+#' contour(testfit)
+#'
+#' testfit$Matrix
+#' testfit$family
+#' testfit$par
+#' testfit$trans_logLik #0.2896287
+#'
+#' @export
+SVineLogLik = function(data, Smodel){
+
+  # number of variables
+  d = ncol(data)
+
+  # Markov order k
+  N = nrow(Smodel$Matrix)
+  k = (N/d)-1
+
+  # Prepare the Dataset
+  df = extend_df(dat = data, var_order = Smodel$var_order, k = k)
+
+  # compute Markov order k-1 model
+  Smodel_sub = VineCopula::RVineMatrix(Matrix = to_upper_tri(Smodel$Matrix)[1:(d*k),1:(d*k)],
+                           family = to_upper_tri(Smodel$family)[1:(d*k),1:(d*k)],
+                           par = to_upper_tri(Smodel$par)[1:(d*k),1:(d*k)],
+                           par2 = to_upper_tri(Smodel$par2)[1:(d*k),1:(d*k)])
+
+  # transition probability f_{x_{t+k}|x_{t+k-1},...,x_{t}}
+  df_sub = df[,1:(d*k)]
+  logLik_full = VineCopula::RVineLogLik(df, RVM = Smodel)
+  logLik_sub = VineCopula::RVineLogLik(df_sub, RVM = Smodel_sub)
+  trans_logLik = (logLik_full$loglik - logLik_sub$loglik)/nrow(df)
+
+  return(trans_logLik)
+}
+
+
+#' Fit a S-vine model
+#'
+#' @description Return the fitted S-vine family and parameters, along with
+#'             transitional loglikelihood on the dataset
+#' @param data matrix with number of columns = d; each column corresponds to a
+#'            univariate vector with uniform margin
+#' @param Matrix can be either:
+#'              1. lower or upper triangular 2d x 2d matrix that defines the
+#'                 Markov order 1 S-vine tree structure.
+#'              2. lower or upper triangular d(k+1) x d(k+1) matrix that defines the
+#'                 Markov order k S-vine tree structure.
+#' @param k Markov order k >= 1, default is k = 1
+#' @param var_order A permutation of numbers from 1 to d, re-arranges column in
+#'              data; default is 1:d (no re-arrangement needed)
+#' @param ... additional arguments pass to RVineCopSelect
+#' @returns best fitted families, parameter estimates, loglikelihood
+#' @export
+SVineCopSelect = function(data, Matrix, k = 1, var_order = NULL, ...){
+
+  # number of variables
+  d = ncol(data)
+
+  # make sure Matrix is upper triangular
+  Matrix = to_upper_tri(Matrix)
+
+  # Markov order k S-vine array
+  if(nrow(Matrix) == (d*(k+1)) && ncol(Matrix) == nrow(Matrix)){
+    mk_d_mat = Matrix
+  }else{
+    mk_d_mat = mk1_to_mkp(Matrix, p=k)
+  }
+  mk_d_mat[is.na(mk_d_mat)] <- 0
+
+  # Prepare the Dataset
+  df = extend_df(dat = data, var_order = var_order, k = k)
+
+  # Fit the model
+  fitRvine_raw = VineCopula::RVineCopSelect(data = df, Matrix = mk_d_mat, ...)
+
+  # take mean par
+  fitRvine = return_consistent_model(fitRvine_raw, d=d)
+
+  fitRvine = VineCopula::RVineMatrix(Matrix = mk_d_mat,
+                         family = fitRvine$family,
+                         par = fitRvine$par,
+                         par2 = fitRvine$par2)
+
+  if(is.null(var_order)){
+    fitRvine$var_order = 1:d
+  }else{
+    fitRvine$var_order = var_order
+  }
+
+  fitRvine$trans_logLik = SVineLogLik(data = data, Smodel = fitRvine)
+
+  return(fitRvine)
+}
+
+
+
 
 
 #' Fit S-vine d-variate Markov order k model
@@ -76,7 +301,7 @@ extend_df = function(dat, var_order, k=1){
 #' testfit[[1]]$trans_logLik
 #'
 #' @export
-fit_svine = function(dat, k = 1, train_prop = 1, ...){
+fit_svine = function(dat, k = 1, train_prop = 1, Matrix = NULL, ...){
 
   # dimensions
   n=nrow(dat)
@@ -89,8 +314,12 @@ fit_svine = function(dat, k = 1, train_prop = 1, ...){
     test = dat[(ntrain+1-k):n,]
   }
 
-  # possible d-variate S-vine array
-  d_matrix_list = svine_mk1(d)
+  if(is.null(Matrix)){
+    # possible d-variate S-vine array
+    d_matrix_list = svine_mk1(d)
+  }else{
+    d_matrix_list = list(Matrix)
+  }
 
   # possible permutations
   var_order = combinat::permn(1:d)
@@ -101,143 +330,18 @@ fit_svine = function(dat, k = 1, train_prop = 1, ...){
   # looping through each possible S-vine array
   for(mat in d_matrix_list){
 
-    mk_d_mat = mk1_to_mkp(mat, p=k)
-
-    # Replace NA with 0
-    mk_d_mat[is.na(mk_d_mat)] <- 0
-
     for(i in var_order){
-
       if(train_prop == 1){
-        df = extend_df(dat, var_order = i, k = k)
-
-        # fits R-vine copula model
-        fitRvine = VineCopula::RVineCopSelect(data = df, Matrix = mk_d_mat, ...)
-        fitRvine$var_order = i
-
-        # compute Markov order k-1 model
-        df_sub = df[,1:(d*k)]
-        mat_sub = mk_d_mat[1:(d*k),1:(d*k)]
-        fitRvine_sub = VineCopula::RVineCopSelect(data = df_sub, Matrix = mat_sub, ...)
-
-        # transition probability f_{x_{t+k}|x_{t+k-1},...,x_{t}}
-        fitRvine$trans_logLik = fitRvine$logLik - fitRvine_sub$logLik
-        result = append(result, list(fitRvine))
-
+        fitRvine = SVineCopSelect(data = dat, Matrix = mat, k = k, var_order = i, ...)
       }else if(train_prop < 1){
-
-        # BELOW ARE TRAINING SET
-        df = extend_df(train, var_order = i, k = k)
-
-        # fits R-vine copula model
-        fitRvine = VineCopula::RVineCopSelect(data = df, Matrix = mk_d_mat, ...)
-
-        # compute Markov order k-1 model
-        df_sub = df[,1:(d*k)]
-        mat_sub = mk_d_mat[1:(d*k),1:(d*k)]
-        fitRvine_sub = VineCopula::RVineCopSelect(data = df_sub, Matrix = mat_sub, ...)
-
-        # BELOW ARE TEST SET
-        df_test = extend_df(test, var_order = i, k = k)
-        logLik_test_full = VineCopula::RVineLogLik(df_test, RVM = fitRvine)
-
-        df_test_sub = df_test[,1:(d*k)]
-        logLik_test_sub = VineCopula::RVineLogLik(df_test_sub, RVM = fitRvine_sub)
-
-        fitRvine$test_trans_logLik = (logLik_test_full$loglik - logLik_test_sub$loglik)/nrow(df_test)
-        # ABOVE ARE TEST SET
-
-        # add
-        fitRvine$var_order = i
-
-        # transition probability f_{x_{t+k}|x_{t+k-1},...,x_{t}}
-        fitRvine$trans_logLik = (fitRvine$logLik - fitRvine_sub$logLik)/nrow(df)
-        result = append(result, list(fitRvine))
+        fitRvine = SVineCopSelect(data = train, Matrix = mat, k = k, var_order = i, ...)
+        fitRvine$test_trans_logLik = SVineLogLik(data = test, Smodel = fitRvine)
       }
-
+      result = append(result, list(fitRvine))
     }
+
   }
 
   return(result)
 }
 
-
-
-#' Fit a specific s-vine structure
-#'
-#' @description Return the fitted S-vine family and parameters, along with
-#'             transitional loglikelihood on the training set and test set
-#' @param var_order A permutation of numbers from 1 to d, re-arranges column in
-#'              utrain and utest
-#' @param utrain matrix with number of columns = d; each column corresponds to a
-#'            univariate vector; training set
-#' @param utest matrix with number of columns = d; each column corresponds to a
-#'            univariate vector; test set
-#' @param k Markov order k >= 1, default is k = 1
-#' @param ... additional arguments pass to RVineCopSelect
-#' @returns best fitted families, parameter estimates, negative loglikelihood
-#' @examples
-#'
-#' # example for d=4, all Gaussian
-#' d2_mk1 = matrix(c(1,1,1,3,
-#'                   0,2,2,1,
-#'                   0,0,3,2,
-#'                   0,0,0,4),
-#'                   nrow = 4, byrow = TRUE)
-#' apar1 = matrix(c(0, 0.4, 0.5, 0.4,
-#'                  0, 0, 0.2, 0.3,
-#'                  0, 0, 0, 0.2,
-#'                  0, 0, 0, 0),
-#'                4,4, byrow=T)
-#' apar2 = matrix(0,4,4)
-#' afam4 = matrix(1,4,4) # all Gaussian
-#'
-#' # simulation
-#' mvine_dat = sim_svine(n = 5000, vinematrix = d2_mk1, fam = afam4,
-#'                       param1 = apar1, param2 = apar2)
-#'
-#' testfit = fit_svine_single(Matrix = d2_mk1, var_order = c(1,2), k = 1,
-#'                            utrain = mvine_dat, utest = mvine_dat,
-#'                            familyset = c(0,1,4,5,14))
-#' testfit$Matrix
-#' testfit$family
-#' testfit$trans_logLik
-#' testfit$test_trans_logLik
-#'
-#' @export
-fit_svine_single = function(Matrix, var_order, k = 1, utrain, utest, ...){
-
-  d = ncol(utrain)
-
-  # Fitting matrix
-  mk_d_mat = mk1_to_mkp(Matrix, p=k)
-  mk_d_mat[is.na(mk_d_mat)] <- 0
-
-
-  ##### BELOW ARE TRAINING SET #####
-  df = extend_df(utrain, var_order = var_order, k = k)
-  fitRvine = VineCopula::RVineCopSelect(data = df, Matrix = mk_d_mat, ...)
-  fitRvine$var_order = var_order
-
-  # compute Markov order k-1 model
-  df_sub = df[,1:(d*k)]
-  mat_sub = mk_d_mat[1:(d*k),1:(d*k)]
-  fitRvine_sub = VineCopula::RVineCopSelect(data = df_sub, Matrix = mat_sub, ...)
-
-  # transition probability f_{x_{t+k}|x_{t+k-1},...,x_{t}}
-  fitRvine$trans_logLik = fitRvine$logLik - fitRvine_sub$logLik
-  ##### ABOVE ARE TRAINING SET #####
-
-
-  ##### BELOW ARE TEST SET #####
-  df_test = extend_df(utest, var_order = var_order, k = k)
-  logLik_test_full = VineCopula::RVineLogLik(df_test, RVM = fitRvine)
-
-  df_test_sub = df_test[,1:(d*k)]
-  logLik_test_sub = VineCopula::RVineLogLik(df_test_sub, RVM = fitRvine_sub)
-
-  fitRvine$test_trans_logLik = logLik_test_full$loglik - logLik_test_sub$loglik
-  ##### ABOVE ARE TEST SET #####
-
-  return(fitRvine)
-}

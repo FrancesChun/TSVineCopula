@@ -224,7 +224,7 @@ fit_innov = function(dat, k = 1, print = FALSE, ...){
 #' fit_uts$trans_logLik
 #'
 #' # test function
-#' out_llk = uni_out_sample_logLik(fit_uts, uts_1, separate = FALSE)
+#' out_llk = UnivariateLogLik(fit_uts, uts_1, separate = FALSE)
 #' out_llk
 #'
 #' ## first example for d=4, all Gumbel
@@ -240,11 +240,11 @@ fit_innov = function(dat, k = 1, print = FALSE, ...){
 #' fit_uts$trans_logLik
 #'
 #' # test function
-#' out_llk = uni_out_sample_logLik(fit_uts, uts_3, return_innov = TRUE)
+#' out_llk = UnivariateLogLik(fit_uts, uts_3, return_innov = TRUE)
 #' out_llk
 #'
 #' @export
-uni_out_sample_logLik = function(uni_model, uts, separate = FALSE, return_innov = FALSE){
+UnivariateLogLik = function(uni_model, uts, separate = FALSE, return_innov = FALSE){
 
   # Markov order k
   k = length(uni_model$fitted_cop)
@@ -280,7 +280,7 @@ uni_out_sample_logLik = function(uni_model, uts, separate = FALSE, return_innov 
   if(separate){
     trans_logLik = log(pdfcond2_1)
   }else{
-    trans_logLik = sum(log(pdfcond2_1))
+    trans_logLik = mean(log(pdfcond2_1))
   }
 
   if(return_innov){
@@ -318,14 +318,14 @@ uni_out_sample_logLik = function(uni_model, uts, separate = FALSE, return_innov 
 #'
 #' testfit = fit_innov(dat = testing$dat, k=3, familyset = c(0,1,4,5,14))
 #' testfit$trans_logLik
-#' innov_out_sample_logLik(testfit, testing$dat)
+#' InnovLogLik(testfit, testing$dat)
 #'
 #' @export
-innov_out_sample_logLik = function(innov_model, umat){
+InnovLogLik = function(innov_model, umat){
 
   # univariate fit
   d = ncol(umat)
-  all_uni = lapply(1:d, function(i) uni_out_sample_logLik(uni_model = innov_model$univariate_fit[[i]],
+  all_uni = lapply(1:d, function(i) UnivariateLogLik(uni_model = innov_model$univariate_fit[[i]],
                                                           uts = umat[, i], return_innov = TRUE))
 
   # innovation data
