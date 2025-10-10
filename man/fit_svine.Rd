@@ -4,7 +4,7 @@
 \alias{fit_svine}
 \title{Fit S-vine d-variate Markov order k model}
 \usage{
-fit_svine(dat, k = 1, train_prop = 1, ...)
+fit_svine(dat, k = 1, train_prop = 1, Matrix = NULL, ...)
 }
 \arguments{
 \item{dat}{matrix with number of columns = d; each column corresponds to a
