@@ -106,9 +106,9 @@ sim_innov = function(n, innov.RVine, uni.Rvine,
       for(j in 1:d){
         currentRvine = uni.Rvine[[j]]
         umat[i,j] = VineCopula::BiCopHinv1(u1 = umat[i-1,j], u2 = innov[i, j],
-                               family = currentRvine$family[1,2],
-                               par = currentRvine$par[1,2],
-                               par2 = currentRvine$par2[1,2])
+                                           family = to_upper_tri(currentRvine$family)[1,2],
+                                           par = to_upper_tri(currentRvine$par)[1,2],
+                                           par2 = to_upper_tri(currentRvine$par2)[1,2])
       }
 
     # Markov order 2 or higher
@@ -124,11 +124,12 @@ sim_innov = function(n, innov.RVine, uni.Rvine,
         currentRvine = uni.Rvine[[j]]
 
         uvec_prev = umat[(ulen-k+1):ulen,j]
+        lenma = nrow(currentRvine$Matrix)
         pvec_prev = rvinepcond(uvec_prev,
-                               currentRvine$Matrix[-1,-1],
-                               currentRvine$family[-1,-1],
-                               currentRvine$par[-1,-1],
-                               currentRvine$par2[-1,-1])
+                               to_upper_tri(currentRvine$Matrix)[-lenma,-lenma],
+                               to_upper_tri(currentRvine$family)[-lenma,-lenma],
+                               to_upper_tri(currentRvine$par)[-lenma,-lenma],
+                               to_upper_tri(currentRvine$par2)[-lenma,-lenma])
         pvec_i = c(pvec_prev, innov[i,j])
 
         # gets u values based on pvec_i via inverse Rosenblatt transform (rvineqcond)

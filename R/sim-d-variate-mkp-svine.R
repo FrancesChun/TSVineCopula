@@ -71,6 +71,11 @@ sim_svine = function(n, vinematrix, fam, param1, param2, d=2,
                           seed = FALSE, ntrunc=0,varname=numeric(0),iprint=FALSE,
                           trunc = 0, thin = 1){
 
+  # convert matrix to upper triangular matrix
+  vinematrix = to_upper_tri(vinematrix)
+  fam = to_upper_tri(fam)
+  param1 = to_upper_tri(param1)
+  param2 = to_upper_tri(param2)
 
   if(is.numeric(seed)){
     set.seed(seed)

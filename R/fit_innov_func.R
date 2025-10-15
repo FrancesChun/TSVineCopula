@@ -73,6 +73,8 @@ fit_bi_copula = function(uts_1, uts_2 = NULL, print = FALSE, ...){
 #' @param uts univariate vector
 #' @param k Markov order k >= 1, default is k = 1
 #' @param print whether to print the result, default to FALSE
+#' @param separate Logical; whether log-likelihoods are returned point wisely
+#'              (default: separate = FALSE)
 #' @param ... additional arguments pass to BiCopSelect
 #' @returns list of best fitted bivariate copulas, total transitional loglikelihood,
 #'         and overall C_{2|1} (transition probability)
@@ -90,11 +92,11 @@ fit_bi_copula = function(uts_1, uts_2 = NULL, print = FALSE, ...){
 #' fit_uts = fit_uni_mk(uts, k = 3, familyset = c(1,4,5,14), print = TRUE)
 #'
 #' @export
-fit_uni_mk = function(uts, k = 1, print = FALSE, ...){
+fit_uni_mk = function(uts, k = 1, print = FALSE, separate = FALSE, ...){
 
   # initialize the value
   cop_list = list()
-  trans_logLik = 0
+  trans_logLik = rep(0, times = (length(uts)-k))
 
   for(i in 1:k){
 
@@ -108,9 +110,9 @@ fit_uni_mk = function(uts, k = 1, print = FALSE, ...){
 
     # transitional loglik
     if(k > i){
-      trans_logLik = trans_logLik + sum(log(cop_new$c12)[-(1:(k-i))])
+      trans_logLik = trans_logLik + log(cop_new$c12)[-(1:(k-i))]
     }else if(i == k){
-      trans_logLik = trans_logLik + sum(log(cop_new$c12))
+      trans_logLik = trans_logLik + log(cop_new$c12)
     }
 
     # add the new fitted copula
@@ -129,12 +131,19 @@ fit_uni_mk = function(uts, k = 1, print = FALSE, ...){
   best_param2 = sapply(cop_list, function(x) x$par2)
   best_tau = sapply(cop_list, function(x) x$tau)
 
+  # sum
+  all_logLik = sum(trans_logLik)
+
   if(print){
     cat("Best fitting copula(s) is/are", best_cop, "\n")
     cat("with param", best_param, "\n")
     cat("with param2", best_param2, "\n")
     cat("with tau", best_tau, "\n")
-    cat("and overall transitional log likelihood", trans_logLik, "\n")
+    cat("and overall transitional log likelihood", all_logLik, "\n")
+  }
+
+  if(!separate){
+    trans_logLik = all_logLik
   }
 
   return(list(fitted_cop = cop_list, trans_logLik = trans_logLik, C2g1 = cop_prev$C2g1,
@@ -280,7 +289,7 @@ UnivariateLogLik = function(uni_model, uts, separate = FALSE, return_innov = FAL
   if(separate){
     trans_logLik = log(pdfcond2_1)
   }else{
-    trans_logLik = mean(log(pdfcond2_1))
+    trans_logLik = sum(log(pdfcond2_1))
   }
 
   if(return_innov){
