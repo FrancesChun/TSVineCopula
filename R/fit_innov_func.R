@@ -195,7 +195,7 @@ fit_innov = function(dat, k = 1, print = FALSE, ...){
   fit_innovation = VineCopula::RVineStructureSelect(data = innov_dat, ...)
 
   # total transitional loglikelihood
-  trans_logLik = (sum(sapply(fit_all_col, function(x) x$trans_logLik)) - fit_innovation$logLik)/nrow(innov_dat)
+  trans_logLik = (sum(sapply(fit_all_col, function(x) x$trans_logLik)) + fit_innovation$logLik)/nrow(innov_dat)
 
   if(print){
     cat("The transitional loglik of the best fitting Rvine innovation model is", trans_logLik)
