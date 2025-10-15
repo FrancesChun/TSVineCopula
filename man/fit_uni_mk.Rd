@@ -4,7 +4,7 @@
 \alias{fit_uni_mk}
 \title{Find the best fitted Bivariate copulas for univariate Markov order k}
 \usage{
-fit_uni_mk(uts, k = 1, print = FALSE, ...)
+fit_uni_mk(uts, k = 1, print = FALSE, separate = FALSE, ...)
 }
 \arguments{
 \item{uts}{univariate vector}
@@ -12,6 +12,9 @@ fit_uni_mk(uts, k = 1, print = FALSE, ...)
 \item{k}{Markov order k >= 1, default is k = 1}
 
 \item{print}{whether to print the result, default to FALSE}
+
+\item{separate}{Logical; whether log-likelihoods are returned point wisely
+(default: separate = FALSE)}
 
 \item{...}{additional arguments pass to BiCopSelect}
 }
