@@ -130,7 +130,7 @@ mk1_to_mkp <- function(mk1_mvine_array, p=2){
   d = nrow(mk1_mvine_array)/2
 
   # initialize the vine-array
-  mkp_array = matrix(nrow = d*(p+1), ncol = d*(p+1))
+  mkp_array = matrix(0, nrow = d*(p+1), ncol = d*(p+1))
   mkp_array[1:(2*d), 1:(2*d)] = mk1_mvine_array
 
   if(p >= 2){
@@ -154,6 +154,9 @@ mk1_to_mkp <- function(mk1_mvine_array, p=2){
       }
     }
   }
+
+  # convert NA to 0
+  mkp_array[is.na(mkp_array)] <- 0
 
   return(mkp_array)
 }

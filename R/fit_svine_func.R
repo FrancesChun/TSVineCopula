@@ -117,7 +117,7 @@ return_consistent_model = function(Smodel, d=2){
 
   # check consistent family
   avg_family = out_svine_par(Smodel$family, d)
-  if(!all.equal(avg_family,Smodel$family)){
+  if(!isTRUE(all.equal(avg_family, Smodel$family))){
     stop(paste("Error: Family matrix is not consistent.",
                "Family matrix is", Smodel$family))
   }
