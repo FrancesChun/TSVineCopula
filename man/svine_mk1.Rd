@@ -2,7 +2,7 @@
 % Please edit documentation in R/svine-array.R
 \name{svine_mk1}
 \alias{svine_mk1}
-\title{Generate all Markov order 1 S-vine array}
+\title{Generate all d-dimensional Markov order 1 S-vine array}
 \usage{
 svine_mk1(d = 2)
 }
