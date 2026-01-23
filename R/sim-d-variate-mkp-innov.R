@@ -1,6 +1,5 @@
 
 # library(VineCopula)
-# library(fastmatrix)
 
 
 # need functions from Rvine-Rosenblatt-v2.R

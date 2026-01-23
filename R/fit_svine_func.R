@@ -5,6 +5,43 @@
 #                                  #
 ####################################
 
+# library(VineCopula)
+
+#' Check if a matrix is lower triangular
+#'
+#' @description
+#'  Check if a matrix is lower triangular; allow: upper triangular entries are
+#'  of the same values (e.g. NA, 0, " ")
+#'
+#' @param mat triangular matrix
+#' @returns Boolean, true if it is a lower triangular matrix
+is_lower_tri <- function(mat) {
+  stopifnot(is.matrix(mat))
+
+  upper_vals <- mat[upper.tri(mat)]
+
+  # Remove duplicated values but keep NA handling correct
+  length(unique(upper_vals)) == 1
+}
+
+#' Check if a matrix is upper triangular
+#'
+#' @description
+#'  Check if a matrix is upper triangular; allow: lower triangular entries are
+#'  of the same values (e.g. NA, 0, " ")
+#'
+#' @param mat triangular matrix
+#' @returns Boolean, true if it is a upper triangular matrix
+is_upper_tri <- function(mat) {
+  stopifnot(is.matrix(mat))
+
+  lower_vals <- mat[lower.tri(mat)]
+
+  # Remove duplicated values but keep NA handling correct
+  length(unique(lower_vals)) == 1
+}
+
+
 #' Convert lower triangular matrix to upper triangular matrix
 #'
 #' @description
@@ -22,7 +59,7 @@ to_upper_tri <- function(mat, NA_to_0 = TRUE){
     outmat[is.na(outmat)] <- 0
   }
 
-  if(fastmatrix::is.lower.tri(outmat)){
+  if(is_lower_tri(outmat)){
     outmat = rotate_180(outmat)
   }
 
@@ -88,13 +125,13 @@ out_svine_par = function(par, d=2){
     return(newvec)
   }
 
-  if(fastmatrix::is.lower.tri(par)){
+  if(is_lower_tri(par)){
 
     for(i in 2:n){
       mat[i, 1:(i-1)] = average_spaced_all_starts(par[i, 1:(i-1)], d)
     }
 
-  }else if(fastmatrix::is.upper.tri(par)){
+  }else if(is_upper_tri(par)){
 
     for(i in 1:(n-1)){
       mat[i, (i+1):n] = average_spaced_all_starts(par[i, (i+1):n], d)

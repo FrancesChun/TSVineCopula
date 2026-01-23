@@ -18,9 +18,16 @@
 # svine_mk1:
 #   Generate all possible d-dimensional Markov order 1 S-vine array
 #   with 1=X_1, 2=X_2,...,d=X_d, d+1=X_1',...,2d=X_d' on diagonal
+#
+# svine_mkp:
+#   Generate all possible d-dimensional Markov order p S-vine array
+#   with 1=X_1, 2=X_2,...,d=X_d, d+1=X_1',...,2d=X_d' on diagonal
+#
 
 #============================================================
 
+# library(VineCopula)
+# library(combinat)
 
 ###################################################################
 #                                                                 #
@@ -422,7 +429,7 @@ fill_check <- function(mat){
 }
 
 
-#' Generate all Markov order 1 S-vine array
+#' Generate all d-dimensional Markov order 1 S-vine array
 #'
 #' @description
 #' Generate all possible d-dimensional Markov order 1 S-vine array
@@ -462,7 +469,23 @@ svine_mk1 <- function(d=2){
 }
 
 
+#' Generate all d-dimensional Markov order p S-vine array
+#'
+#' @description Generate all possible d-dimensional Markov order p S-vine array
+#'              with 1=X_1, 2=X_2,...,d=X_d, d+1=X_1',...,2d=X_d' on diagonal
+#' @param d dimension k >= 2, default is k = 2, must be an integer
+#' @return List of d(p+1)xd(p+1) S-vine arrays
+#' @examples
+#' svine_d3_p2_list = svine_mkp(d=3,p=2)
+#'
+#'@export
+svine_mkp <- function(d=2, p=1){
 
+  svine_mk1_list = svine_mk1(d)
+  mkp_list = lapply(svine_mk1_list, mk1_to_mkp, p=p)
+
+  return(mkp_list)
+}
 
 
 
