@@ -488,4 +488,59 @@ svine_mkp <- function(d=2, p=1){
 }
 
 
+#' Replace numbers in a svine array to characters
+#'
+#' @description Replace numbers in a d-dimensional Markov order k S-vine array
+#'              with corresponding characters; assume 1 to d*(k+1) on diagonal
+#' @param mat a d(k+1)xd(k+1) S-vine array
+#' @param var_vec a vector of characters to replace; length d;
+#'                default c("X", "Y", "Z")
+#' @param k Markov order k, default is k = 1, must be an integer
+#' @param upper.tri Boolean, whether to convert the resulting matrix to upper
+#'              triangular; default TRUE
+#' @return a d(k+1)xd(k+1) S-vine array
+#' @export
+num_to_xyz <- function(mat, var_vec = c("X", "Y", "Z"), k = 1, upper.tri = TRUE){
+
+  str_vec = as.vector(outer(var_vec, 1:(k+1), paste0))
+
+  # Replace numbers with corresponding strings
+  char_mat <- matrix(NA, nrow = nrow(mat), ncol = ncol(mat))
+  for(i in 1:nrow(mat)){
+    for(j in 1:ncol(mat)){
+      char_mat[i,j] = ifelse(mat[i,j] %in% c(0,NA), " ", str_vec[(mat[i,j])])
+    }
+  }
+
+  if(upper.tri){
+    char_mat = to_upper_tri(char_mat)
+  }
+
+  return(char_mat)
+}
+
+#' Convert a svine array to svine conditional matrix
+#'
+#' @description Convert a svine array to svine conditional matrix; requires the
+#' matrix to be upper triangular (will convert mat to upper triangular)
+#' @param mat a d(k+1)xd(k+1) S-vine array
+#' @return a d(k+1)xd(k+1) S-vine array
+#' @export
+to_vinemat <- function(mat){
+  mat = to_upper_tri(mat)
+  n = ncol(mat)
+  vinemat = matrix(" ", nrow = n, ncol = n)
+  for(i in 1:(n-1)){
+    for(j in (i+1):n){
+      if(i == 1){
+        vinemat[i,j] <- paste(mat[i,j], mat[j,j], sep = "")
+      }else{
+        first2 = paste(mat[i,j], mat[j,j], sep = "")
+        condi = paste(mat[1:(i-1),j], collapse = "")
+        vinemat[i,j] <- paste(first2, ";", condi, sep = "")
+      }
+    }
+  }
+  return(vinemat)
+}
 
